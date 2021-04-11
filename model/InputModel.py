@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel
 
 
 class EndpointTypeEnum(str, Enum):
@@ -9,7 +10,11 @@ class EndpointTypeEnum(str, Enum):
 
 
 class EngineNameEnum(str, Enum):
-    aurora = "aurora"
+    aurora = 'aurora'
+    oracle = 'oracle'
+    postgres = 'postgres'
+    aurora_postgresql = 'aurora-postgresql'
+    sybase = 'sybase'
 
 
 class MigrationTypeEnum(str, Enum):
@@ -21,10 +26,8 @@ class MigrationTypeEnum(str, Enum):
 class SourceEndpointModel(BaseModel):
     endpointType: EndpointTypeEnum = EndpointTypeEnum.source
     engineName: EngineNameEnum
-    serverName: str
     databaseName: str
     extraConnectionAttributes: Optional[str]
-    port: int
     secretsManagerAccessRoleArn: str
     secretsManagerSecretId: str
 
@@ -32,16 +35,16 @@ class SourceEndpointModel(BaseModel):
 class TargetEndpointModel(BaseModel):
     endpointType: EndpointTypeEnum = EndpointTypeEnum.target
     engineName: EngineNameEnum
-    serverName: str
     databaseName: str
     extraConnectionAttributes: Optional[str]
-    port: int
     secretsManagerAccessRoleArn: str
     secretsManagerSecretId: str
 
 
 class ReplicationInstanceModel(BaseModel):
-    replicationInstanceArn: str
+    replicationInstanceArn: Optional[str]
+    replicationInstanceClass: Optional[str] = "dms.t2.micro"
+    replicationInstanceStorage: Optional[int] = 20
 
 
 class ReplicationTaskModel(BaseModel):
@@ -50,8 +53,15 @@ class ReplicationTaskModel(BaseModel):
     replicationTaskSettings: Optional[str]
 
 
+class TagsModel(BaseModel):
+    ApplicationShortName: str
+    AppCode: str
+    AssetId: str
+
+
 class InputModel(BaseModel):
     sourceEndpointDetails: SourceEndpointModel
     targetEndpointDetails: TargetEndpointModel
     replicationTaskDetails: ReplicationTaskModel
     replicationInstanceDetails: ReplicationInstanceModel
+    tags: TagsModel
