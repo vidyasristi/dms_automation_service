@@ -65,3 +65,8 @@ class InputModel(BaseModel):
     replicationTaskDetails: ReplicationTaskModel
     replicationInstanceDetails: ReplicationInstanceModel
     tags: TagsModel
+
+
+class DeleteModel(BaseModel):
+    uniqueId: str
+    awsAccountNumber: str

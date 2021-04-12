@@ -1,51 +1,40 @@
-from model.InputModel import InputModel
+from model.InputModel import InputModel, DeleteModel
 from service.endpoint_service import EndpointService
 from service.cleanup_service import CleanUpService
+from util.dms_util import generate_tags, populate_resources_dict
+from util.exception_util import ProcessingException
+from service.replication_service import ReplicationService
 import boto3
 import random
 import string
-import asyncio
+
+import uuid
 
 client = boto3.client('dms')
 endpointService = EndpointService()
 cleanUpService = CleanUpService()
+replicationService = ReplicationService()
 
 
 def deploy_dms(input: InputModel):
     provisioned_resources = {}
-    uniqueId = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-    sourceResponse = endpointService.create_source_endpoint(input, uniqueId, provisioned_resources)
-    # targetResponse = create_target_endpoint(input)
-    # create_replication_task(input, sourceResponse, targetResponse)
-    # print(sourceResponse)
-    # print(targetResponse)
-    # instanceResponse = await create_replication_instance(input)
-    # print(instanceResponse)
-    # await asyncio.sleep(10)
+    populate_resources_dict(provisioned_resources)
+    uniqueId = str(uuid.uuid4())
+    try:
+        # replicationService.create_replication_instance(input, uniqueId, provisioned_resources)
+        endpointService.create_source_endpoint(input, uniqueId, provisioned_resources)
+        # endpointService.create_target_endpoint(input, uniqueId, provisioned_resources)
+        # replicationService.create_replication_task(input, uniqueId, provisioned_resources)
+    except Exception as e:
+        raise ProcessingException(provisioned_resources, e)
+    return uniqueId
 
 
-def create_replication_instance(input: InputModel):
-    return client.create_replication_instance(
-        ReplicationInstanceIdentifier='instance' + ''.join(random.choice(string.ascii_lowercase) for i in range(10)),
-        AllocatedStorage=input.replicationInstanceDetails.replicationInstanceStorage,
-        ReplicationInstanceClass=input.replicationInstanceDetails.replicationInstanceClass,
-        VpcSecurityGroupIds=[
-            'sg-bee091b5'
-        ],
-        # AvailabilityZone='string',
-        ReplicationSubnetGroupIdentifier='default-vpc-33d7744e',
-        MultiAZ=False,
-        # EngineVersion='string',
-        Tags=generate_tags(input),
-        PubliclyAccessible=False
-    )
-
-
-def create_replication_task(input, sourceResponse, targetResponse):
+def create_replication_task(input, uniqueId, provisioned_resources):
     response = client.create_replication_task(
-        ReplicationTaskIdentifier='task' + ''.join(random.choice(string.ascii_lowercase) for i in range(10)),
-        SourceEndpointArn=sourceResponse['Endpoint']['EndpointArn'],
-        TargetEndpointArn=targetResponse['Endpoint']['EndpointArn'],
+        ReplicationTaskIdentifier='task-' + uniqueId,
+        SourceEndpointArn=provisioned_resources['sourceEndpointArn'],
+        TargetEndpointArn=provisioned_resources['targetEndpointArn'],
         ReplicationInstanceArn=input.replicationInstanceDetails.replicationInstanceArn,
         MigrationType=input.replicationTaskDetails.migrationType,
         TableMappings=input.replicationTaskDetails.tableMappings,
@@ -53,18 +42,5 @@ def create_replication_task(input, sourceResponse, targetResponse):
     )
 
 
-def create_target_endpoint(input: InputModel):
-    letters = string.ascii_lowercase
-    random_name = ''.join(random.choice(letters) for i in range(10))
-    return client.create_endpoint(
-        EndpointIdentifier="target" + random_name,
-        EndpointType=input.targetEndpointDetails.endpointType,
-        EngineName="postgres",
-        DatabaseName=input.targetEndpointDetails.databaseName,
-        # ExtraConnectionAttributes=input.targetEndpointDetails.extraConnectionAttributes,
-        # CertificateArn='string',
-        SslMode='none',
-        PostgreSQLSettings={
-            'SecretsManagerAccessRoleArn': input.targetEndpointDetails.secretsManagerAccessRoleArn,
-            'SecretsManagerSecretId': input.targetEndpointDetails.secretsManagerSecretId
-        })
+def delete_dms(deleteInput: DeleteModel):
+    cleanUpService.delete_dms_resources(deleteInput)

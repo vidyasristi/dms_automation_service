@@ -1,18 +1,22 @@
 import uvicorn
 from fastapi import FastAPI
 
-from model.InputModel import InputModel
-from service.dms_service import deploy_dms
-from util import log
+from model.InputModel import InputModel, DeleteModel
+from service.dms_service import deploy_dms, delete_dms
+from util import log_util
 
 app = FastAPI()
-log.setup_custom_logger('root')
+log_util.setup_custom_logger('root')
 
 
-@app.post("/dms/startMigration")
-def startAutomation(input: InputModel):
-    deploy_dms(input)
-    return input
+@app.post("/dms/createMigration")
+def createMigration(input: InputModel):
+    return deploy_dms(input)
+
+
+@app.delete("/dms/deleteMigration")
+def deleteMigration(deleteInput: DeleteModel):
+    delete_dms(deleteInput)
 
 
 if __name__ == "__main__":
